@@ -6,20 +6,17 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/chronos-go/api/internal/handler/client"
 	"github.com/chronos-go/api/internal/handler/health"
-	"github.com/chronos-go/api/internal/handler/provider"
+	"github.com/chronos-go/api/internal/handler/service"
 )
 
 func main() {
 	r := chi.NewRouter()
 
 	r.Get("/health", health.Get)
-
-	r.Route("/providers", func(r chi.Router) {
-		r.Post("/", provider.Register)
-		r.Get("/", provider.List)
-		r.Get("/{id}", provider.GetByID)
-	})
+	r.Post("/clients", client.Create)
+	r.Post("/services", service.Create)
 
 	log.Println("server listening on :8080")
 	if err := http.ListenAndServe(":8080", r); err != nil {
