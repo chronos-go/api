@@ -11,6 +11,7 @@ import (
 	authhandler "github.com/chronos-go/api/internal/handler/auth"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/chronos-go/api/internal/handler/client"
 	"github.com/chronos-go/api/internal/handler/health"
@@ -26,6 +27,8 @@ func main() {
 	loginHandler := authhandler.NewHandler(jwtService)
 
 	r := chi.NewRouter()
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
 
 	r.Get("/health", health.Get)
 	r.Post("/clients", client.Create)
