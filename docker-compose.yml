@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: chronos-postgres
+    environment:
+      POSTGRES_DB: chronos
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - chronos-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d chronos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  chronos-postgres-data:
