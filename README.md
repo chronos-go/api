@@ -1,78 +1,128 @@
 # Chronos API
 
-API desenvolvida para a disciplina WEB II (DIM0547).
+API da disciplina WEB II (DIM0547).
 
-## Sprint 2 - PostgreSQL local
+## Requisitos
 
-A Sprint 2 usa PostgreSQL como banco de dados real. Para desenvolvimento local, o projeto possui um `docker-compose.yml` com um container PostgreSQL.
-
-### Requisitos
-
+- Go
 - Docker
 - Docker Compose
-- Go
+- Atlas CLI
 
-### Subir o banco
+## Banco local
+
+Subir PostgreSQL:
 
 ```powershell
 docker compose up -d
 ```
 
-Esse comando sobe um PostgreSQL local com:
-
-```text
-database: chronos
-user: postgres
-password: postgres
-port: 5432
-```
-
-### String de conexao
-
-Use a variavel abaixo para conectar a API ao banco:
-
-```text
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/chronos?sslmode=disable
-```
-
-Existe um arquivo `.env.example` com esse valor de referencia.
-
-### Verificar se o banco esta rodando
+Verificar status:
 
 ```powershell
 docker compose ps
 ```
 
-### Parar o banco
+Dados do banco:
 
-```powershell
-docker compose down
+```text
+host: localhost
+port: 5433
+user: postgres
+password: postgres
+database: chronos
+database auxiliar do Atlas: chronos_dev
 ```
 
-### Remover os dados locais do banco
+String de conexao:
 
-Use apenas se quiser apagar o volume local do PostgreSQL:
-
-```powershell
-docker compose down -v
+```text
+DATABASE_URL=postgres://postgres:postgres@localhost:5433/chronos?sslmode=disable
 ```
 
-### Rodar a API
+## Migrations
 
-Com o banco rodando, execute:
+Arquivos principais:
+
+```text
+db/schema/001_init.sql
+db/migrations/20260513000100_init.sql
+atlas.hcl
+```
+
+Aplicar migrations:
+
+```powershell
+atlas migrate apply --env local
+```
+
+Ver status:
+
+```powershell
+atlas migrate status --env local
+```
+
+Validar migrations:
+
+```powershell
+atlas migrate validate --env local
+```
+
+Atualizar hash das migrations:
+
+```powershell
+atlas migrate hash --env local
+```
+
+Gerar nova migration depois de alterar `db/schema/`:
+
+```powershell
+atlas migrate diff nome_da_migration --env local
+```
+
+## Schema
+
+O schema cria:
+
+- `clients`
+- `providers`
+- `services`
+
+Relacionamento 1:N da Sprint 2:
+
+```text
+providers -> services
+```
+
+## Rodar API
 
 ```powershell
 go run .
 ```
 
-Por padrao, a API sobe em:
+URL local:
 
 ```text
 http://localhost:8080
 ```
 
-### Rodar os testes
+## Testes
 
 ```powershell
 go test ./...
+```
+
+## Resetar banco local
+
+Apaga o container e o volume local:
+
+```powershell
+docker compose down -v
+```
+
+Depois suba e aplique as migrations novamente:
+
+```powershell
+docker compose up -d
+atlas migrate apply --env local
 ```
