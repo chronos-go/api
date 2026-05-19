@@ -13,13 +13,21 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/chronos-go/api/internal/database"
 	"github.com/chronos-go/api/internal/handler/client"
 	"github.com/chronos-go/api/internal/handler/health"
 	"github.com/chronos-go/api/internal/handler/provider"
-	"github.com/chronos-go/api/internal/handler/service"
+	servicehandler "github.com/chronos-go/api/internal/handler/service"
+	"github.com/chronos-go/api/internal/repository"
 )
 
 func main() {
+	db := database.Connect()
+	defer db.Close()
+
+	serviceRepo := repository.NewServiceRepo(db)
+	serviceh := servicehandler.NewHandler(serviceRepo)
+
 	jwtService, err := authsvc.NewJWTService(jwtSecret(), jwtIssuer(), jwtTTL())
 	if err != nil {
 		log.Fatalf("failed to initialize auth service: %v", err)
@@ -35,8 +43,13 @@ func main() {
 	r.Post("/providers", provider.Register)
 	r.Get("/providers", provider.List)
 	r.Get("/providers/{id}", provider.GetByID)
-	r.Post("/services", service.Create)
 	r.Post("/login", loginHandler.Login)
+
+	r.Post("/services", serviceh.Create)
+	r.Get("/services", serviceh.List)
+	r.Get("/services/{id}", serviceh.GetByID)
+	r.Put("/services/{id}", serviceh.Update)
+	r.Delete("/services/{id}", serviceh.Delete)
 
 	log.Println("server listening on :8080")
 	if err := http.ListenAndServe(":8080", r); err != nil {
