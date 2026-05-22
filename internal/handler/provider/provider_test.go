@@ -6,10 +6,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/chronos-go/api/internal/domain"
 	"github.com/chronos-go/api/internal/handler/provider"
+	"github.com/chronos-go/api/internal/repository"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 )
 
 func newRouter() *chi.Mux {
@@ -17,6 +20,7 @@ func newRouter() *chi.Mux {
 	r.Post("/providers", provider.Register)
 	r.Get("/providers", provider.List)
 	r.Get("/providers/{id}", provider.GetByID)
+	r.Get("/providers/{id}/details", provider.GetDetails)
 	return r
 }
 
@@ -153,5 +157,101 @@ func TestList_ReturnsArray(t *testing.T) {
 	var result []domain.Provider
 	if err := json.NewDecoder(rec.Body).Decode(&result); err != nil {
 		t.Fatalf("expected JSON array, got error: %v", err)
+	}
+}
+
+func TestGetDetails_WithServices(t *testing.T) {
+	r := newRouter()
+	providerID := uuid.New()
+	serviceID := uuid.New()
+
+	if err := repository.SaveProvider(domain.Provider{
+		ID:        providerID,
+		Name:      "Ana Provider",
+		Email:     "ana-details@test.com",
+		Document:  "12345678900",
+		Password:  "hash",
+		CreatedAt: time.Now(),
+	}); err != nil {
+		t.Fatalf("failed to seed provider: %v", err)
+	}
+
+	if _, err := repository.SaveService(domain.Service{
+		ID:              serviceID,
+		ProviderID:      providerID,
+		Name:            "Corte Masculino",
+		Description:     "Corte simples com acabamento",
+		PriceCents:      3500,
+		DurationMinutes: 30,
+		CreatedAt:       time.Now(),
+	}); err != nil {
+		t.Fatalf("failed to seed service: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/providers/"+providerID.String()+"/details", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+
+	var resp map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	services, ok := resp["services"].([]any)
+	if !ok {
+		t.Fatalf("expected services array, got %T", resp["services"])
+	}
+	if len(services) != 1 {
+		t.Fatalf("expected 1 service, got %d", len(services))
+	}
+}
+
+func TestGetDetails_WithoutServices(t *testing.T) {
+	r := newRouter()
+	providerID := uuid.New()
+
+	if err := repository.SaveProvider(domain.Provider{
+		ID:        providerID,
+		Name:      "Ana Sem Serviços",
+		Email:     "ana-empty@test.com",
+		Document:  "12345678900",
+		Password:  "hash",
+		CreatedAt: time.Now(),
+	}); err != nil {
+		t.Fatalf("failed to seed provider: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/providers/"+providerID.String()+"/details", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+
+	var resp map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	services, ok := resp["services"].([]any)
+	if !ok {
+		t.Fatalf("expected services array, got %T", resp["services"])
+	}
+	if len(services) != 0 {
+		t.Fatalf("expected 0 services, got %d", len(services))
+	}
+}
+
+func TestGetDetails_NotFound(t *testing.T) {
+	r := newRouter()
+	req := httptest.NewRequest(http.MethodGet, "/providers/00000000-0000-0000-0000-000000000001/details", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", rec.Code)
 	}
 }

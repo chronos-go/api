@@ -1,0 +1,108 @@
+{
+  "info": {
+    "name": "Chronos API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",       "value": "http://localhost:8080" },
+    { "key": "providerId",    "value": "" },
+    { "key": "serviceId",     "value": "" },
+    { "key": "providerEmail", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Health Check",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/health"
+      }
+    },
+    {
+      "name": "2. Criar Provider",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var json = pm.response.json();",
+              "pm.collectionVariables.set('providerId', json.id);",
+              "pm.collectionVariables.set('providerEmail', json.email);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/providers",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Ana Provider\",\n  \"email\": \"ana@chronos.com\",\n  \"document\": \"12345678900\",\n  \"password\": \"senha123\"\n}"
+        }
+      }
+    },
+    {
+      "name": "3. Criar Service",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var json = pm.response.json();",
+              "pm.collectionVariables.set('serviceId', json.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/services",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"provider_id\": \"{{providerId}}\",\n  \"name\": \"Corte Masculino\",\n  \"description\": \"Corte simples com acabamento\",\n  \"price_cents\": 3500,\n  \"duration_minutes\": 30\n}"
+        }
+      }
+    },
+    {
+      "name": "4. Listar Services",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/services"
+      }
+    },
+    {
+      "name": "5. Buscar Service por ID",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/services/{{serviceId}}"
+      }
+    },
+    {
+      "name": "6. Atualizar Service",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/services/{{serviceId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Corte Masculino Premium\",\n  \"description\": \"Corte com lavagem e acabamento\",\n  \"price_cents\": 4500,\n  \"duration_minutes\": 45\n}"
+        }
+      }
+    },
+    {
+      "name": "7. Provider com Services (aninhado)",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/providers/{{providerId}}/details"
+      }
+    },
+    {
+      "name": "8. Deletar Service",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/services/{{serviceId}}"
+      }
+    }
+  ]
+}
