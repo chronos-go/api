@@ -255,3 +255,14 @@ func TestGetDetails_NotFound(t *testing.T) {
 		t.Fatalf("expected 404, got %d", rec.Code)
 	}
 }
+
+func TestGetDetails_InvalidUUID(t *testing.T) {
+	r := newRouter()
+	req := httptest.NewRequest(http.MethodGet, "/providers/not-a-uuid/details", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", rec.Code)
+	}
+}
