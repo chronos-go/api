@@ -44,8 +44,15 @@ jobs:
       - name: Set up Atlas
         uses: ariga/setup-atlas@v0
 
+      - name: Validate migration checksums
+        run: atlas migrate validate --dir "file://db/migrations"
+
       - name: Apply migrations
-        run: atlas migrate apply --url "$DATABASE_URL" --dir "file://db/migrations"
+        shell: bash
+        run: |
+          for migration in db/migrations/*.sql; do
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"
+          done
 
       - name: Set up sqlc
         uses: sqlc-dev/setup-sqlc@v4
