@@ -9,6 +9,7 @@ import (
 
 	"github.com/chronos-go/api/internal/crypto"
 	"github.com/chronos-go/api/internal/domain"
+	"github.com/chronos-go/api/internal/httpx"
 	"github.com/chronos-go/api/internal/repository"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -48,7 +49,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 func Register(w http.ResponseWriter, r *http.Request) {
 	var req registerRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := httpx.DecodeJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}

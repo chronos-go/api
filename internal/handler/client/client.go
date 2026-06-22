@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+
+	"github.com/chronos-go/api/internal/httpx"
 )
 
 type Client struct {
@@ -20,7 +22,7 @@ type response struct {
 
 func Create(w http.ResponseWriter, r *http.Request) {
 	var c Client
-	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
+	if err := httpx.DecodeJSON(r, &c); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{
 			Status:  "error",
 			Message: "invalid request body",
