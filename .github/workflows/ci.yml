@@ -45,7 +45,9 @@ jobs:
         uses: ariga/setup-atlas@v0
 
       - name: Validate migration checksums
-        run: atlas migrate validate --dir "file://db/migrations"
+        run: |
+          atlas migrate hash --dir "file://db/migrations"
+          git diff --exit-code -- db/migrations/atlas.sum
 
       - name: Apply migrations
         shell: bash
