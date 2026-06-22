@@ -27,7 +27,65 @@ func newRouter(t *testing.T) *chi.Mux {
 	h := NewHandler(jwtService)
 	r := chi.NewRouter()
 	r.Post("/login", h.Login)
+	r.Post("/refresh", h.Refresh)
+	r.Post("/logout", h.Logout)
 	return r
+}
+
+func TestSession_RotationReplayAndLogout(t *testing.T) {
+	r := newRouter(t)
+	hash, err := crypto.Hash("secret123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	email := "provider-session-flow@test.com"
+	if err := repository.SaveProvider(domain.Provider{
+		ID: uuid.New(), Name: "Session Provider", Email: email, Document: "12312312300",
+		Password: hash, CreatedAt: time.Now(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	loginBody, _ := json.Marshal(map[string]string{"email": email, "password": "secret123", "role": "provider"})
+	loginRec := httptest.NewRecorder()
+	r.ServeHTTP(loginRec, httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader(loginBody)))
+	if loginRec.Code != http.StatusOK {
+		t.Fatalf("login: expected 200, got %d", loginRec.Code)
+	}
+	var login loginResponse
+	if err := json.NewDecoder(loginRec.Body).Decode(&login); err != nil {
+		t.Fatal(err)
+	}
+	if login.RefreshToken == "" {
+		t.Fatal("login did not return refresh token")
+	}
+
+	refreshBody, _ := json.Marshal(refreshRequest{RefreshToken: login.RefreshToken})
+	refreshRec := httptest.NewRecorder()
+	r.ServeHTTP(refreshRec, httptest.NewRequest(http.MethodPost, "/refresh", bytes.NewReader(refreshBody)))
+	if refreshRec.Code != http.StatusOK {
+		t.Fatalf("refresh: expected 200, got %d", refreshRec.Code)
+	}
+	var refreshed tokenResponse
+	if err := json.NewDecoder(refreshRec.Body).Decode(&refreshed); err != nil {
+		t.Fatal(err)
+	}
+	if refreshed.RefreshToken == "" || refreshed.RefreshToken == login.RefreshToken {
+		t.Fatal("refresh token was not rotated")
+	}
+
+	replayRec := httptest.NewRecorder()
+	r.ServeHTTP(replayRec, httptest.NewRequest(http.MethodPost, "/refresh", bytes.NewReader(refreshBody)))
+	if replayRec.Code != http.StatusUnauthorized {
+		t.Fatalf("replay: expected 401, got %d", replayRec.Code)
+	}
+
+	logoutBody, _ := json.Marshal(refreshRequest{RefreshToken: refreshed.RefreshToken})
+	logoutRec := httptest.NewRecorder()
+	r.ServeHTTP(logoutRec, httptest.NewRequest(http.MethodPost, "/logout", bytes.NewReader(logoutBody)))
+	if logoutRec.Code != http.StatusNoContent {
+		t.Fatalf("logout: expected 204, got %d", logoutRec.Code)
+	}
 }
 
 func TestLogin_SuccessProvider(t *testing.T) {

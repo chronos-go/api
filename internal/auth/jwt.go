@@ -6,13 +6,17 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 var (
 	ErrInvalidToken     = errors.New("invalid token")
 	ErrInvalidSignature = errors.New("invalid token signature")
 	ErrExpiredToken     = errors.New("token expired")
+	ErrWrongTokenType   = errors.New("wrong token type")
 )
+
+const AccessTokenType = "access"
 
 type JWTService struct {
 	secret []byte
@@ -31,6 +35,7 @@ type TokenInput struct {
 type TokenClaims struct {
 	Role        string         `json:"role"`
 	Email       string         `json:"email"`
+	TokenType   string         `json:"token_type"`
 	Provisional map[string]any `json:"provisional,omitempty"`
 	jwt.RegisteredClaims
 }
@@ -65,8 +70,10 @@ func (s *JWTService) GenerateToken(input TokenInput) (string, time.Time, error) 
 	claims := TokenClaims{
 		Role:        input.Role,
 		Email:       input.Email,
+		TokenType:   AccessTokenType,
 		Provisional: input.Provisional,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        uuid.NewString(),
 			Subject:   input.Subject,
 			Issuer:    s.issuer,
 			IssuedAt:  jwt.NewNumericDate(now),
@@ -104,6 +111,9 @@ func (s *JWTService) ValidateToken(tokenString string) (*TokenClaims, error) {
 
 	if !parsed.Valid {
 		return nil, ErrInvalidToken
+	}
+	if claims.TokenType != AccessTokenType {
+		return nil, ErrWrongTokenType
 	}
 
 	return claims, nil

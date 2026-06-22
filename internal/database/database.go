@@ -23,7 +23,7 @@ func Connect() *pgxpool.Pool {
 	}
 
 	if err := pool.Ping(context.Background()); err != nil {
-		log.Fatalf("database is unreachable: %v\nDATABASE_URL=%s", err, dsn)
+		log.Fatalf("database is unreachable: %v", err)
 	}
 
 	fmt.Println("database connection established")

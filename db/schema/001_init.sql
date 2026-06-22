@@ -30,3 +30,19 @@ CREATE TABLE IF NOT EXISTS services (
 
 CREATE INDEX IF NOT EXISTS services_provider_id_idx
     ON services(provider_id);
+
+CREATE TABLE IF NOT EXISTS auth_sessions (
+    id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id    TEXT        NOT NULL,
+    role       TEXT        NOT NULL CHECK (role IN ('client', 'provider')),
+    email      TEXT        NOT NULL,
+    family_id  UUID        NOT NULL,
+    token_hash TEXT        NOT NULL UNIQUE,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used_at    TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS auth_sessions_family_id_idx ON auth_sessions(family_id);
+CREATE INDEX IF NOT EXISTS auth_sessions_expires_at_idx ON auth_sessions(expires_at);
