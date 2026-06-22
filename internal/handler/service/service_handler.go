@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/chronos-go/api/internal/domain"
+	"github.com/chronos-go/api/internal/httpx"
+	securitymw "github.com/chronos-go/api/internal/middleware/security"
 	"github.com/chronos-go/api/internal/repository"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -46,7 +48,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	var req createRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := httpx.DecodeJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
@@ -55,7 +57,8 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "name is required")
 		return
 	}
-	if strings.TrimSpace(req.ProviderID) == "" {
+	_, authenticated := securitymw.IdentityFromContext(r.Context())
+	if strings.TrimSpace(req.ProviderID) == "" && !authenticated {
 		writeError(w, http.StatusBadRequest, "provider_id is required")
 		return
 	}
@@ -68,10 +71,20 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	providerID, err := uuid.Parse(req.ProviderID)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid provider_id format")
-		return
+	var providerID uuid.UUID
+	var err error
+	if identity, ok := securitymw.IdentityFromContext(r.Context()); ok {
+		providerID, err = uuid.Parse(identity.Subject)
+		if err != nil {
+			writeError(w, http.StatusUnauthorized, "invalid authenticated subject")
+			return
+		}
+	} else {
+		providerID, err = uuid.Parse(req.ProviderID)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid provider_id format")
+			return
+		}
 	}
 
 	created, err := h.repo.Create(domain.Service{
@@ -152,7 +165,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req createRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := httpx.DecodeJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
