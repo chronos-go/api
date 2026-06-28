@@ -22,6 +22,8 @@ type ProviderRepository interface {
 	GetProviderByEmail(email string) (domain.Provider, error)
 	ListProviders() ([]domain.Provider, error)
 	GetProviderDetails(id uuid.UUID) (ProviderDetails, error)
+	UpdateProvider(p domain.Provider) (domain.Provider, error)
+	DeleteProvider(id uuid.UUID) error
 }
 
 type ProviderDetails struct {
@@ -59,6 +61,14 @@ func ListProviders() []domain.Provider {
 
 func GetProviderDetails(id uuid.UUID) (ProviderDetails, error) {
 	return defaultProviderRepo.GetProviderDetails(id)
+}
+
+func UpdateProvider(p domain.Provider) (domain.Provider, error) {
+	return defaultProviderRepo.UpdateProvider(p)
+}
+
+func DeleteProvider(id uuid.UUID) error {
+	return defaultProviderRepo.DeleteProvider(id)
 }
 
 // ── PostgreSQL ────────────────────────────────────────────────────────────────
@@ -120,6 +130,38 @@ func (r *ProviderRepo) ListProviders() ([]domain.Provider, error) {
 		providers = append(providers, toDomainProvider(row))
 	}
 	return providers, nil
+}
+
+func (r *ProviderRepo) UpdateProvider(p domain.Provider) (domain.Provider, error) {
+	row, err := r.queries.UpdateProvider(context.Background(), db.UpdateProviderParams{
+		ID:       toPgUUID(p.ID),
+		Name:     p.Name,
+		Email:    p.Email,
+		Document: p.Document,
+		Password: p.Password,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Provider{}, ErrProviderNotFound
+		}
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return domain.Provider{}, ErrProviderEmailConflict
+		}
+		return domain.Provider{}, err
+	}
+	return toDomainProvider(row), nil
+}
+
+func (r *ProviderRepo) DeleteProvider(id uuid.UUID) error {
+	rows, err := r.queries.DeleteProvider(context.Background(), toPgUUID(id))
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrProviderNotFound
+	}
+	return nil
 }
 
 func (r *ProviderRepo) GetProviderDetails(id uuid.UUID) (ProviderDetails, error) {
@@ -196,6 +238,31 @@ func (r *InMemoryProviderRepo) ListProviders() ([]domain.Provider, error) {
 		result = append(result, p)
 	}
 	return result, nil
+}
+
+func (r *InMemoryProviderRepo) UpdateProvider(p domain.Provider) (domain.Provider, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.data[p.ID]; !ok {
+		return domain.Provider{}, ErrProviderNotFound
+	}
+	for _, existing := range r.data {
+		if existing.Email == p.Email && existing.ID != p.ID {
+			return domain.Provider{}, ErrProviderEmailConflict
+		}
+	}
+	r.data[p.ID] = p
+	return p, nil
+}
+
+func (r *InMemoryProviderRepo) DeleteProvider(id uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.data[id]; !ok {
+		return ErrProviderNotFound
+	}
+	delete(r.data, id)
+	return nil
 }
 
 func (r *InMemoryProviderRepo) GetProviderDetails(id uuid.UUID) (ProviderDetails, error) {

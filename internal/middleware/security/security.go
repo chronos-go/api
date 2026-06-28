@@ -45,6 +45,11 @@ func IdentityFromContext(ctx context.Context) (Identity, bool) {
 	return identity, ok
 }
 
+// WithIdentity injects an Identity into ctx. Use only in tests.
+func WithIdentity(ctx context.Context, id Identity) context.Context {
+	return context.WithValue(ctx, identityKey{}, id)
+}
+
 func RequireRoles(roles ...string) func(http.Handler) http.Handler {
 	allowed := make(map[string]struct{}, len(roles))
 	for _, role := range roles {
