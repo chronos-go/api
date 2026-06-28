@@ -42,6 +42,7 @@ func main() {
 	repository.SetClientRepository(clientRepo)
 	serviceh := servicehandler.NewHandler(serviceRepo)
 	clienth := client.NewHandler(clientRepo)
+	providerh := provider.NewHandler(providerRepo)
 
 	secret := jwtSecret()
 	if len(secret) < 32 {
@@ -70,7 +71,7 @@ func main() {
 
 	r.Get("/health", health.Get)
 	r.Post("/clients", clienth.Create)
-	r.Post("/providers", provider.Register)
+	r.Post("/providers", providerh.Register)
 	r.With(authLimiter.Middleware).Post("/login", loginHandler.Login)
 	r.Route("/auth", func(ar chi.Router) {
 		ar.With(authLimiter.Middleware).Post("/login", loginHandler.Login)
@@ -83,9 +84,12 @@ func main() {
 		protected.With(securitymw.RequireRoles("client")).Get("/clients/me", clienth.GetMe)
 		protected.With(securitymw.RequireRoles("client")).Put("/clients/me", clienth.UpdateMe)
 		protected.With(securitymw.RequireRoles("client")).Delete("/clients/me", clienth.DeleteMe)
-		protected.Get("/providers", provider.List)
-		protected.Get("/providers/{id}", provider.GetByID)
-		protected.Get("/providers/{id}/details", provider.GetDetails)
+		protected.With(securitymw.RequireRoles("provider")).Get("/providers/me", providerh.GetMe)
+		protected.With(securitymw.RequireRoles("provider")).Put("/providers/me", providerh.UpdateMe)
+		protected.With(securitymw.RequireRoles("provider")).Delete("/providers/me", providerh.DeleteMe)
+		protected.Get("/providers", providerh.List)
+		protected.Get("/providers/{id}", providerh.GetByID)
+		protected.Get("/providers/{id}/details", providerh.GetDetails)
 		protected.Get("/services", serviceh.List)
 		protected.Get("/services/{id}", serviceh.GetByID)
 		protected.With(securitymw.RequireRoles("provider")).Post("/services", serviceh.Create)

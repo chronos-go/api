@@ -43,6 +43,19 @@ func (q *Queries) CreateProvider(ctx context.Context, arg CreateProviderParams) 
 	return i, err
 }
 
+const deleteProvider = `-- name: DeleteProvider :execrows
+DELETE FROM providers
+WHERE id = $1
+`
+
+func (q *Queries) DeleteProvider(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteProvider, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getProviderByEmail = `-- name: GetProviderByEmail :one
 SELECT id, name, email, document, password, created_at FROM providers
 WHERE email = $1
@@ -111,4 +124,39 @@ func (q *Queries) ListProviders(ctx context.Context) ([]Provider, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateProvider = `-- name: UpdateProvider :one
+UPDATE providers
+SET name = $2, email = $3, document = $4, password = $5
+WHERE id = $1
+RETURNING id, name, email, document, password, created_at
+`
+
+type UpdateProviderParams struct {
+	ID       pgtype.UUID `json:"id"`
+	Name     string      `json:"name"`
+	Email    string      `json:"email"`
+	Document string      `json:"document"`
+	Password string      `json:"password"`
+}
+
+func (q *Queries) UpdateProvider(ctx context.Context, arg UpdateProviderParams) (Provider, error) {
+	row := q.db.QueryRow(ctx, updateProvider,
+		arg.ID,
+		arg.Name,
+		arg.Email,
+		arg.Document,
+		arg.Password,
+	)
+	var i Provider
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Document,
+		&i.Password,
+		&i.CreatedAt,
+	)
+	return i, err
 }
