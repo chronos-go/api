@@ -36,9 +36,12 @@ func main() {
 
 	serviceRepo := repository.NewServiceRepo(db)
 	providerRepo := repository.NewProviderRepo(db)
+	clientRepo := repository.NewClientRepo(db)
 	repository.SetServiceRepository(serviceRepo)
 	repository.SetProviderRepository(providerRepo)
+	repository.SetClientRepository(clientRepo)
 	serviceh := servicehandler.NewHandler(serviceRepo)
+	clienth := client.NewHandler(clientRepo)
 
 	secret := jwtSecret()
 	if len(secret) < 32 {
@@ -66,7 +69,7 @@ func main() {
 	r.Use(httpx.CORS(httpx.CORSConfig{AllowedOrigins: allowedOrigins()}))
 
 	r.Get("/health", health.Get)
-	r.Post("/clients", client.Create)
+	r.Post("/clients", clienth.Create)
 	r.Post("/providers", provider.Register)
 	r.With(authLimiter.Middleware).Post("/login", loginHandler.Login)
 	r.Route("/auth", func(ar chi.Router) {
@@ -77,6 +80,9 @@ func main() {
 
 	r.Group(func(protected chi.Router) {
 		protected.Use(securitymw.Authenticate(jwtService))
+		protected.With(securitymw.RequireRoles("client")).Get("/clients/me", clienth.GetMe)
+		protected.With(securitymw.RequireRoles("client")).Put("/clients/me", clienth.UpdateMe)
+		protected.With(securitymw.RequireRoles("client")).Delete("/clients/me", clienth.DeleteMe)
 		protected.Get("/providers", provider.List)
 		protected.Get("/providers/{id}", provider.GetByID)
 		protected.Get("/providers/{id}/details", provider.GetDetails)
