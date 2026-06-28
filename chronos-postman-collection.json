@@ -4,105 +4,481 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl",       "value": "http://localhost:8080" },
-    { "key": "providerId",    "value": "" },
-    { "key": "serviceId",     "value": "" },
-    { "key": "providerEmail", "value": "" }
+    { "key": "base_url",       "value": "http://localhost:8080" },
+    { "key": "access_token",   "value": "" },
+    { "key": "provider_id",    "value": "" },
+    { "key": "client_id",      "value": "" },
+    { "key": "service_id",     "value": "" }
   ],
   "item": [
     {
-      "name": "1. Health Check",
-      "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/health"
-      }
-    },
-    {
-      "name": "2. Criar Provider",
-      "event": [
+      "name": "Health",
+      "item": [
         {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "var json = pm.response.json();",
-              "pm.collectionVariables.set('providerId', json.id);",
-              "pm.collectionVariables.set('providerEmail', json.email);"
-            ]
+          "name": "GET /health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('content-type json', () => pm.response.to.have.header('Content-Type', 'application/json'));",
+                  "pm.test('status ok', () => pm.expect(pm.response.json().status).to.eql('ok'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/health"
           }
         }
-      ],
-      "request": {
-        "method": "POST",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
-        "url": "{{baseUrl}}/providers",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"name\": \"Ana Provider\",\n  \"email\": \"ana@chronos.com\",\n  \"document\": \"12345678900\",\n  \"password\": \"senha123\"\n}"
-        }
-      }
+      ]
     },
     {
-      "name": "3. Criar Service",
-      "event": [
+      "name": "Auth",
+      "item": [
         {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "var json = pm.response.json();",
-              "pm.collectionVariables.set('serviceId', json.id);"
-            ]
+          "name": "POST /login — provider válido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('tem access_token', () => pm.expect(pm.response.json().access_token).to.be.a('string'));",
+                  "var json = pm.response.json();",
+                  "pm.collectionVariables.set('access_token', json.access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ana@chronos.com\",\n  \"password\": \"senha123\",\n  \"role\": \"provider\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /login — credenciais inválidas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 401', () => pm.response.to.have.status(401));",
+                  "pm.test('tem error', () => pm.expect(pm.response.json().error).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ana@chronos.com\",\n  \"password\": \"senha-errada\",\n  \"role\": \"provider\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /login — role inválida",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ana@chronos.com\",\n  \"password\": \"senha123\",\n  \"role\": \"admin\"\n}"
+            }
           }
         }
-      ],
-      "request": {
-        "method": "POST",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
-        "url": "{{baseUrl}}/services",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"provider_id\": \"{{providerId}}\",\n  \"name\": \"Corte Masculino\",\n  \"description\": \"Corte simples com acabamento\",\n  \"price_cents\": 3500,\n  \"duration_minutes\": 30\n}"
+      ]
+    },
+    {
+      "name": "Clients",
+      "item": [
+        {
+          "name": "POST /clients — cadastro",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "var json = pm.response.json();",
+                  "pm.collectionVariables.set('client_id', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/clients",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"João Cliente\",\n  \"email\": \"joao@email.com\",\n  \"password\": \"senha123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /clients — email duplicado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/clients",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"João Cliente\",\n  \"email\": \"joao@email.com\",\n  \"password\": \"senha123\"\n}"
+            }
+          }
         }
-      }
+      ]
     },
     {
-      "name": "4. Listar Services",
-      "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/services"
-      }
-    },
-    {
-      "name": "5. Buscar Service por ID",
-      "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/services/{{serviceId}}"
-      }
-    },
-    {
-      "name": "6. Atualizar Service",
-      "request": {
-        "method": "PUT",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
-        "url": "{{baseUrl}}/services/{{serviceId}}",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"name\": \"Corte Masculino Premium\",\n  \"description\": \"Corte com lavagem e acabamento\",\n  \"price_cents\": 4500,\n  \"duration_minutes\": 45\n}"
+      "name": "Providers",
+      "item": [
+        {
+          "name": "POST /providers — cadastro",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "var json = pm.response.json();",
+                  "pm.collectionVariables.set('provider_id', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/providers",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ana Provider\",\n  \"email\": \"ana@chronos.com\",\n  \"document\": \"12345678900\",\n  \"password\": \"senha123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /providers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('é array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/providers"
+          }
+        },
+        {
+          "name": "GET /providers/{id}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/providers/{{provider_id}}"
+          }
+        },
+        {
+          "name": "GET /providers/{id}/details — com services",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('tem services', () => pm.expect(pm.response.json().services).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/providers/{{provider_id}}/details"
+          }
+        },
+        {
+          "name": "GET /providers/{id} — 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/providers/00000000-0000-0000-0000-000000000000"
+          }
         }
-      }
+      ]
     },
     {
-      "name": "7. Provider com Services (aninhado)",
-      "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/providers/{{providerId}}/details"
-      }
+      "name": "Services",
+      "item": [
+        {
+          "name": "POST /services — criar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "var json = pm.response.json();",
+                  "pm.collectionVariables.set('service_id', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{base_url}}/services",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider_id\": \"{{provider_id}}\",\n  \"name\": \"Corte Masculino\",\n  \"description\": \"Corte simples com acabamento\",\n  \"price_cents\": 3500,\n  \"duration_minutes\": 30\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /services — listar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('é array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/services"
+          }
+        },
+        {
+          "name": "GET /services/{id}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/services/{{service_id}}"
+          }
+        },
+        {
+          "name": "PUT /services/{id} — atualizar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{base_url}}/services/{{service_id}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Corte Masculino Premium\",\n  \"description\": \"Corte com lavagem e acabamento\",\n  \"price_cents\": 4500,\n  \"duration_minutes\": 45\n}"
+            }
+          }
+        },
+        {
+          "name": "DELETE /services/{id}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{base_url}}/services/{{service_id}}"
+          }
+        }
+      ]
     },
     {
-      "name": "8. Deletar Service",
-      "request": {
-        "method": "DELETE",
-        "url": "{{baseUrl}}/services/{{serviceId}}"
-      }
+      "name": "Security/Error Cases",
+      "item": [
+        {
+          "name": "GET /services — rota sem token (se protegida)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 401 ou 200', () => pm.expect([200, 401]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/services"
+          }
+        },
+        {
+          "name": "POST /services — token inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer token-invalido" }
+            ],
+            "url": "{{base_url}}/services",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider_id\": \"{{provider_id}}\",\n  \"name\": \"Teste\",\n  \"duration_minutes\": 30\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /services/{id} — 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/services/00000000-0000-0000-0000-000000000000"
+          }
+        },
+        {
+          "name": "POST /providers — email duplicado (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/providers",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ana Provider\",\n  \"email\": \"ana@chronos.com\",\n  \"document\": \"12345678900\",\n  \"password\": \"senha123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /login — JSON inválido (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/login",
+            "body": {
+              "mode": "raw",
+              "raw": "not-json"
+            }
+          }
+        }
+      ]
     }
   ]
 }
