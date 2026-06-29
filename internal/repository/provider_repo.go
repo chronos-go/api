@@ -83,6 +83,7 @@ func NewProviderRepo(pool *pgxpool.Pool) *ProviderRepo {
 
 func (r *ProviderRepo) SaveProvider(p domain.Provider) error {
 	_, err := r.queries.CreateProvider(context.Background(), db.CreateProviderParams{
+		ID:       toPgUUID(p.ID),
 		Name:     p.Name,
 		Email:    p.Email,
 		Document: p.Document,

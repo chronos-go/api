@@ -12,20 +12,22 @@ import (
 )
 
 const createProvider = `-- name: CreateProvider :one
-INSERT INTO providers (name, email, document, password)
-VALUES ($1, $2, $3, $4)
+INSERT INTO providers (id, name, email, document, password)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id, name, email, document, password, created_at
 `
 
 type CreateProviderParams struct {
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Document string `json:"document"`
-	Password string `json:"password"`
+	ID       pgtype.UUID `json:"id"`
+	Name     string      `json:"name"`
+	Email    string      `json:"email"`
+	Document string      `json:"document"`
+	Password string      `json:"password"`
 }
 
 func (q *Queries) CreateProvider(ctx context.Context, arg CreateProviderParams) (Provider, error) {
 	row := q.db.QueryRow(ctx, createProvider,
+		arg.ID,
 		arg.Name,
 		arg.Email,
 		arg.Document,

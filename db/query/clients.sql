@@ -1,6 +1,6 @@
 -- name: CreateClient :one
-INSERT INTO clients (name, email, birth_date, password)
-VALUES ($1, $2, $3, $4)
+INSERT INTO clients (id, name, email, birth_date, password)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: GetClientByID :one

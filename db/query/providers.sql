@@ -1,6 +1,6 @@
 -- name: CreateProvider :one
-INSERT INTO providers (name, email, document, password)
-VALUES ($1, $2, $3, $4)
+INSERT INTO providers (id, name, email, document, password)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: GetProviderByID :one

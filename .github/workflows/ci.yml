@@ -29,6 +29,8 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/chronos?sslmode=disable
       JWT_SECRET: ci-only-secret-with-at-least-32-characters
       JWT_ISSUER: chronos-api
+      AUTH_RATE_LIMIT_REQUESTS: "1000"
+      AUTH_RATE_LIMIT_WINDOW_SECONDS: "60"
 
     steps:
       - uses: actions/checkout@v4
@@ -67,5 +69,8 @@ jobs:
       - name: Build
         run: go build ./...
 
-      - name: Test
-        run: go test -race -coverprofile=coverage.out ./...
+      - name: Unit Tests
+        run: go test -race -coverprofile=coverage.out $(go list ./... | grep -v '/e2e')
+
+      - name: E2E Integration Tests
+        run: go test -race -v -timeout 120s ./e2e/...

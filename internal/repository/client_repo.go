@@ -71,6 +71,7 @@ func NewClientRepo(pool *pgxpool.Pool) *ClientRepo {
 
 func (r *ClientRepo) Save(c domain.Client) (domain.Client, error) {
 	row, err := r.queries.CreateClient(context.Background(), db.CreateClientParams{
+		ID:        toPgUUID(c.ID),
 		Name:      c.Name,
 		Email:     c.Email,
 		BirthDate: toPgDate(c.BirthDate),
