@@ -123,23 +123,64 @@ http://localhost:8080
 O refresh token é persistido apenas como SHA-256 em `auth_sessions`; o valor em
 texto puro só é entregue ao cliente no login/refresh.
 
+## Seed de demonstração
+
+O comando `seed` popula o banco com dados reproduzíveis para demonstração do MVP:
+
+- **1 client** — `client-demo@chronos.app`
+- **2 providers** — `vintage@chronos.app` e `studio@chronos.app`
+- **6 services** (3 para cada provider)
+
+### Como aplicar migrations
+
+Antes de executar o seed, certifique-se de que as migrations foram aplicadas:
+
+```powershell
+atlas migrate apply --env local
+```
+
+### Como executar o seed
+
+```powershell
+DATABASE_URL=postgres://postgres:postgres@localhost:5433/chronos?sslmode=disable go run ./cmd/seed
+```
+
+O comando também cria as tabelas automaticamente caso não existam (útil para
+bancos vazios sem migrations).
+
+### Credenciais de demonstração
+
+Todas as contas usam a mesma senha:
+
+| Papel    | Email                          | Senha        |
+|----------|--------------------------------|--------------|
+| Client   | `client-demo@chronos.app`      | `demo123456` |
+| Provider | `vintage@chronos.app`          | `demo123456` |
+| Provider | `studio@chronos.app`           | `demo123456` |
+
+As senhas são armazenadas como hashes bcrypt — nunca em texto puro.
+
+### Como limpar/resetar o ambiente
+
+Para remover apenas os dados inseridos pelo seed:
+
+```powershell
+DATABASE_URL=postgres://postgres:postgres@localhost:5433/chronos?sslmode=disable go run ./cmd/seed -clean
+```
+
+Para resetar o banco local por completo (apaga container + volume):
+
+```powershell
+docker compose down -v
+docker compose up -d
+atlas migrate apply --env local
+```
+
 ## Testes
 
 ```powershell
 go test ./...
 ```
 
-## Resetar banco local
-
-Apaga o container e o volume local:
-
-```powershell
-docker compose down -v
-```
-
-Depois suba e aplique as migrations novamente:
-
-```powershell
-docker compose up -d
-atlas migrate apply --env local
-```
+Os testes do seed (`internal/seed/seed_test.go`) são integração com PostgreSQL
+e são automaticamente ignorados quando `DATABASE_URL` não está definida.
